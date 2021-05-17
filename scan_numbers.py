@@ -1,65 +1,5 @@
-from pydash import invert
-
-CELL_VALUES = {
-    ' _ | ||_|': '0',
-    '     |  |': '1',
-    ' _  _||_ ': '2',
-    ' _  _| _|': '3',
-    '   |_|  |': '4',
-    ' _ |_  _|': '5',
-    ' _ |_ |_|': '6',
-    ' _   |  |': '7',
-    ' _ |_||_|': '8',
-    ' _ |_| _|': '9'
-}
-
-
-def parse_account_number(num):
-    # input has 9 3x3 "cells".
-    # break it up into individual cells.
-
-    cells = get_cells(num)
-    cell_values = []
-    for cell in cells:
-        cell_values.append(get_cell_value(cell))
-
-    return tuple(cell_values)
-
-
-def get_cell_value(cell):
-    return CELL_VALUES.get(cell, -1)
-
-
-def get_cells(num):
-    cells = []
-
-    # copy into lines
-    lines = get_lines(num)
-
-    for offset in range(0, 26, 3):
-        cell = lines[0][offset:offset + 3]
-        cell += lines[1][offset:offset + 3]
-        cell += lines[2][offset:offset + 3]
-
-        cells.append(cell)
-
-    return cells
-
-
-def get_lines(num):
-    lines = ["", "", ""]
-    offset = 0
-
-    for char in num:
-        lines[offset] += char
-        if len(lines[offset]) == 27:
-            offset += 1
-
-    return lines
-
-
-def format_cell(cell):
-    return "%s\n%s\n%s" % (cell[0:3], cell[3:6], cell[6:9])
+from constants import CELL_VALUES
+from constants import ALTERNATIVES
 
 
 def get_account_numbers_from_file(filename):
@@ -116,12 +56,39 @@ def split_account_number_into_numbers(arr):
 
 def change_digits_into_nums(nested):
     num = ''
+    fixes = []
     for inner_array in nested:
         if ''.join(inner_array) in CELL_VALUES:
             num += CELL_VALUES[''.join(inner_array)]
         else:
+            fixes = correct_illegible_cell(''.join(inner_array))
             num += '?'
+
+    if len(fixes) >= 1:
+        if len(get_correct_account_number(num, fixes)) > 0:
+            num = get_correct_account_number(num, fixes)
+
     return num
+
+
+def get_correct_account_number(number_string, fixes):
+
+    for s in number_string:
+        for fix in fixes:
+            if s == '?':
+                if is_valid_account_number(number_string.replace('?', fix)):
+                    return number_string.replace('?', fix)
+    return ''
+
+
+def correct_illegible_cell(digit_string):
+    counter = 0
+    possible_digits = []
+    for digit in CELL_VALUES:
+        if len([i for i in range(len(digit)) if digit[i] != digit_string[i]]) == 1:
+            possible_digits.append(CELL_VALUES[digit])
+
+    return possible_digits
 
 
 def calculate_cell_values(arr):
@@ -141,9 +108,21 @@ def generate_account_validation_report(account_numbers_array):
     file = open('report.txt', 'w')
     for account_number in account_numbers_array:
         if '?' in account_number:
-            file.write(account_number + ' ILL\n')
+            file.write(f'{account_number} ILL\n')
         elif not is_valid_account_number(account_number):
-            file.write(account_number + ' ERR\n')
+            if correct_scanning_mistake(account_number) != account_number:
+                file.write(correct_scanning_mistake(account_number) + '\n')
+            else:
+                file.write(f'{account_number} ERR\n')
         else:
             file.write(account_number + '\n')
     file.close()
+
+
+def correct_scanning_mistake(num):
+    for i in range(len(num)):
+        for alternative in ALTERNATIVES[num[i]]:
+            new_num = num[:i] + alternative + num[i + 1:]
+            if is_valid_account_number(new_num):
+                return new_num
+    return num
