@@ -112,7 +112,7 @@ def is_valid_account_number(account_number):
 
 
 def generate_account_validation_report(account_numbers_array):
-    file = open('report.txt', 'w')
+    file = open('../report.txt', 'w')
     for account_number in account_numbers_array:
         if '?' in account_number:
             file.write(f'{account_number} ILL\n')
