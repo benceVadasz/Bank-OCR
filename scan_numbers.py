@@ -104,7 +104,7 @@ def is_valid_account_number(account_number):
     result = []
     for x in range(len(reversed_account_number_array)):
         if not reversed_account_number_array[x].isalpha():
-            result.append(int(reversed_account_number_array[x]))
+            result.append(int(reversed_account_number_array[x]) * (x+1))
         else:
             result.append(LETTER_VALUES[reversed_account_number_array[x]])
 
@@ -117,19 +117,22 @@ def generate_account_validation_report(account_numbers_array):
         if '?' in account_number:
             file.write(f'{account_number} ILL\n')
         elif not is_valid_account_number(account_number):
-            if correct_account_number_is_invalid(account_number) != account_number:
-                file.write(correct_account_number_is_invalid(account_number) + '\n')
+            if len(correct_account_number_is_invalid(account_number)) > 1:
+                file.write(f'{account_number} AMB {str(correct_account_number_is_invalid(account_number))} \n')
+            elif len(correct_account_number_is_invalid(account_number)) == 1:
+                file.write(f'{correct_account_number_is_invalid(account_number)[0]}\n')
             else:
-                file.write(f'{account_number} ERR\n')
+                file.write(f'{account_number} ILL\n')
         else:
             file.write(account_number + '\n')
     file.close()
 
 
 def correct_account_number_is_invalid(num):
+    valid_numbers = []
     for i in range(len(num)):
         for alternative in ALTERNATIVES[num[i]]:
             new_num = num[:i] + alternative + num[i + 1:]
             if is_valid_account_number(new_num):
-                return new_num
-    return num
+                valid_numbers.append(new_num)
+    return valid_numbers
