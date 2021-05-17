@@ -1,10 +1,10 @@
 from constants import CELL_VALUES
 from constants import ALTERNATIVES
+from constants import LETTER_PAIRS
+from constants import LETTER_VALUES
 
 
 def get_account_numbers_from_file(filename):
-    """Returns all account numbers found in <filename>, as a list of tuples"""
-
     accounts = []
     final_accounts = []
     number_line = ''
@@ -17,8 +17,9 @@ def get_account_numbers_from_file(filename):
                 accounts.append(number_line)
                 number_line = ''
             else:
-                if len(line) < 28:
-                    number_line += line.rstrip('\n') + ' '
+                if len(line) < 28 and len(line) != 0:
+                    missing_spaces = ' ' * (28 - len(line))
+                    number_line += line.rstrip('\n') + missing_spaces
                 else:
                     number_line += line.rstrip('\n')
     for num in accounts:
@@ -32,14 +33,13 @@ def get_account_numbers_from_file(filename):
 
 def split_account_number_into_numbers(arr):
     nested = [[], [], [], [], [], [], [], [], []]
-    nums = []
+    account_number_string_array = []
     ind = 0
     place = 0
-    ap = ''
     inner_array = []
-    for s in arr:
-        for c in s:
-            inner_array.append(c)
+    for account_number_string in arr:
+        for character in account_number_string:
+            inner_array.append(character)
             ind += 1
             if ind != 0 and ind % 3 == 0:
                 for x in inner_array:
@@ -49,9 +49,9 @@ def split_account_number_into_numbers(arr):
                     place = 0
                 else:
                     place += 1
-        nums.append(change_digits_into_nums(nested))
+        account_number_string_array.append(change_digits_into_nums(nested))
         nested = [[], [], [], [], [], [], [], [], []]
-    return nums
+    return account_number_string_array
 
 
 def change_digits_into_nums(nested):
@@ -59,7 +59,10 @@ def change_digits_into_nums(nested):
     fixes = []
     for inner_array in nested:
         if ''.join(inner_array) in CELL_VALUES:
-            num += CELL_VALUES[''.join(inner_array)]
+            if int(CELL_VALUES[''.join(inner_array)]) >= 10:
+                num += LETTER_PAIRS[''.join(inner_array)]
+            else:
+                num += CELL_VALUES[''.join(inner_array)]
         else:
             fixes = correct_illegible_cell(''.join(inner_array))
             num += '?'
@@ -72,7 +75,6 @@ def change_digits_into_nums(nested):
 
 
 def get_correct_account_number(number_string, fixes):
-
     for s in number_string:
         for fix in fixes:
             if s == '?':
@@ -82,7 +84,6 @@ def get_correct_account_number(number_string, fixes):
 
 
 def correct_illegible_cell(digit_string):
-    counter = 0
     possible_digits = []
     for digit in CELL_VALUES:
         if len([i for i in range(len(digit)) if digit[i] != digit_string[i]]) == 1:
@@ -100,8 +101,14 @@ def calculate_cell_values(arr):
 
 def is_valid_account_number(account_number):
     reversed_account_number_array = list(account_number)[::-1]
-    return sum(
-        [(x + 1) * int(reversed_account_number_array[x]) for x in range(len(reversed_account_number_array))]) % 11 == 0
+    result = []
+    for x in range(len(reversed_account_number_array)):
+        if not reversed_account_number_array[x].isalpha():
+            result.append(int(reversed_account_number_array[x]))
+        else:
+            result.append(LETTER_VALUES[reversed_account_number_array[x]])
+
+    return sum(result) % 11 == 0
 
 
 def generate_account_validation_report(account_numbers_array):
@@ -110,8 +117,8 @@ def generate_account_validation_report(account_numbers_array):
         if '?' in account_number:
             file.write(f'{account_number} ILL\n')
         elif not is_valid_account_number(account_number):
-            if correct_scanning_mistake(account_number) != account_number:
-                file.write(correct_scanning_mistake(account_number) + '\n')
+            if correct_account_number_is_invalid(account_number) != account_number:
+                file.write(correct_account_number_is_invalid(account_number) + '\n')
             else:
                 file.write(f'{account_number} ERR\n')
         else:
@@ -119,7 +126,7 @@ def generate_account_validation_report(account_numbers_array):
     file.close()
 
 
-def correct_scanning_mistake(num):
+def correct_account_number_is_invalid(num):
     for i in range(len(num)):
         for alternative in ALTERNATIVES[num[i]]:
             new_num = num[:i] + alternative + num[i + 1:]
